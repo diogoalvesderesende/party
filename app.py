@@ -83,6 +83,58 @@ st.markdown("""
         .prompt-section {
             padding: 1rem;
         }
+        
+        /* Mobile photo display optimizations */
+        .stImage > img {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Camera input styling */
+        .stCameraInput > div {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        /* File uploader mobile styling */
+        .stFileUploader > div {
+            border-radius: 10px;
+            border: 2px dashed #FF6B6B;
+            padding: 1rem;
+            background-color: #f8f9fa;
+        }
+        
+        /* Button improvements for mobile */
+        .stButton > button {
+            font-size: 14px;
+            padding: 0.75rem 1.5rem;
+            min-height: 44px; /* iOS touch target minimum */
+        }
+        
+        /* Column spacing for mobile */
+        .stColumn {
+            margin-bottom: 1rem;
+        }
+        
+        /* Success/error message styling */
+        .stAlert {
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    }
+    
+    /* Touch-friendly improvements */
+    @media (pointer: coarse) {
+        .stButton > button {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        
+        .stCheckbox > label {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -94,6 +146,32 @@ PREDEFINED_PROMPTS = {
     "silly_madness": "🤪 Silly Madness - Add ridiculous props like oversized sunglasses, clown noses, and funny hats. Change the outputs to epic party mode.",
     "shroomy": "🍄 Shroomy - Make the people appear in a colorful shroomy world. Change the outfits to alice in wonderland mode.",
 }
+
+def process_image_for_mobile(image):
+    """Process image for optimal mobile display and API compatibility"""
+    try:
+        # Convert to RGB if necessary (important for JPEG output)
+        if image.mode in ('RGBA', 'LA', 'P'):
+            # Create a white background for transparent images
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            if image.mode == 'P':
+                image = image.convert('RGBA')
+            background.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
+            image = background
+        elif image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Resize if too large (max 2048px on longest side for API efficiency)
+        max_size = 2048
+        if max(image.size) > max_size:
+            ratio = max_size / max(image.size)
+            new_size = (int(image.width * ratio), int(image.height * ratio))
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+        
+        return image
+    except Exception as e:
+        st.error(f"❌ Error processing image: {str(e)}")
+        return None
 
 def generate_single_photo(uploaded_image, prompt_name, prompt_description):
     """Generate a single photo for a specific prompt"""
@@ -133,9 +211,10 @@ def generate_single_photo(uploaded_image, prompt_name, prompt_description):
                 file_name = f"party_photo_{safe_name}.jpg"
                 image = Image.open(io.BytesIO(part.inline_data.data))
                 
-                # Convert to RGB if necessary and save with high quality
-                if image.mode != 'RGB':
-                    image = image.convert('RGB')
+                # Process image for mobile compatibility
+                image = process_image_for_mobile(image)
+                if image is None:
+                    continue
                 
                 # Save as high-quality JPEG (quality=95)
                 image.save(file_name, 'JPEG', quality=95, optimize=True)
@@ -207,18 +286,94 @@ def main():
     # Single column mobile-first layout
     st.markdown('### 📸 Step 1: Take Your Photo')
     
-    uploaded_file = st.file_uploader(
-        "📷 Upload your greenscreen photo",
-        type=['png', 'jpg', 'jpeg', 'webp'],
-        help="Upload a photo with greenscreen background (PNG, JPG, JPEG, or WebP)",
-        key="photo_upload"
-    )
+    # Mobile-friendly photo input options
+    col1, col2 = st.columns([1, 1])
     
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        # Display smaller image for mobile
-        st.image(image, caption="🎭 Your Original Photo", width=300)
-        st.session_state.current_image = image
+    with col1:
+        st.markdown("#### 📷 Take Photo")
+        camera_photo = st.camera_input(
+            "Take a photo with greenscreen background",
+            help="Use your camera to take a photo with a green background",
+            key="camera_input"
+        )
+    
+    with col2:
+        st.markdown("#### 📁 Upload Photo")
+        uploaded_file = st.file_uploader(
+            "Or upload from gallery",
+            type=['png', 'jpg', 'jpeg', 'webp', 'heic'],
+            help="Upload a photo with greenscreen background",
+            key="photo_upload"
+        )
+    
+    # Process the uploaded/taken photo
+    current_image = None
+    image_source = None
+    
+    if camera_photo is not None:
+        try:
+            raw_image = Image.open(camera_photo)
+            current_image = process_image_for_mobile(raw_image)
+            if current_image:
+                image_source = "Camera"
+                st.success("✅ Photo captured from camera!")
+            else:
+                st.error("❌ Failed to process camera photo")
+        except Exception as e:
+            st.error(f"❌ Error processing camera photo: {str(e)}")
+            st.info("💡 Try taking the photo again or use the upload option")
+    
+    elif uploaded_file is not None:
+        try:
+            raw_image = Image.open(uploaded_file)
+            current_image = process_image_for_mobile(raw_image)
+            if current_image:
+                image_source = "Upload"
+                st.success("✅ Photo uploaded successfully!")
+            else:
+                st.error("❌ Failed to process uploaded photo")
+        except Exception as e:
+            st.error(f"❌ Error processing uploaded photo: {str(e)}")
+            st.info("💡 Please try uploading a different photo (PNG, JPG, JPEG, WebP, or HEIC)")
+    
+    # Display the image if successfully loaded
+    if current_image is not None:
+        try:
+            # Resize image for mobile display while maintaining aspect ratio
+            display_width = min(400, current_image.width)
+            aspect_ratio = current_image.height / current_image.width
+            display_height = int(display_width * aspect_ratio)
+            
+            st.image(
+                current_image, 
+                caption=f"🎭 Your Original Photo ({image_source})", 
+                width=display_width,
+                use_column_width=True
+            )
+            
+            # Store in session state
+            st.session_state.current_image = current_image
+            st.session_state.image_source = image_source
+            
+            # Show image info
+            st.info(f"📊 Image info: {current_image.width}x{current_image.height} pixels, Mode: {current_image.mode}")
+            
+        except Exception as e:
+            st.error(f"❌ Error displaying image: {str(e)}")
+            st.info("💡 The image might be corrupted or in an unsupported format")
+    else:
+        st.info("👆 Please take a photo or upload an image to continue")
+        
+        # Mobile tips section
+        st.markdown("---")
+        st.markdown("#### 📱 Mobile Tips:")
+        st.markdown("""
+        - **📷 Camera**: Use the camera option for best results with greenscreen
+        - **📁 Upload**: Select from your photo gallery if you already have a greenscreen photo
+        - **💡 Best Results**: Use a bright, solid green background (like a green sheet or wall)
+        - **📐 Format**: The app supports PNG, JPG, JPEG, WebP, and HEIC formats
+        - **🔧 Troubleshooting**: If upload fails, try taking a new photo or use a different format
+        """)
 
     st.markdown('</div>', unsafe_allow_html=True)
     
