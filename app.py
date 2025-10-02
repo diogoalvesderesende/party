@@ -105,6 +105,22 @@ st.markdown("""
             min-height: 44px; /* iOS touch target minimum */
         }
         
+        /* Tabs styling for mobile */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: bold;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background-color: #FF6B6B;
+            color: white;
+        }
+        
         /* Column spacing for mobile */
         .stColumn {
             margin-bottom: 1rem;
@@ -269,7 +285,7 @@ def generate_party_photos(uploaded_image, selected_prompts, custom_prompts):
 def main():
     # Header
     st.markdown('<h1 class="main-header">🍌 Nano Banana Party Photo Editor</h1>', unsafe_allow_html=True)
-    st.markdown('<div style="text-align: center; font-size: 18px; color: #666; margin-bottom: 2rem;">📱 Take photos or upload from gallery with greenscreen background to create magical party memories! ✨</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; font-size: 18px; color: #666; margin-bottom: 2rem;">📱 Take photos with camera or upload from gallery with greenscreen background to create magical party memories! ✨</div>', unsafe_allow_html=True)
     
     # Initialize session state
     if 'generated_images' not in st.session_state:
@@ -280,35 +296,65 @@ def main():
     # Single column mobile-first layout
     st.markdown('### 📸 Step 1: Take Your Photo')
     
-    # File uploader that allows camera access for higher quality photos
-    st.markdown("#### 📷 Take or Upload Your Greenscreen Photo")
-    st.info("💡 **Tip**: You can take a photo with your camera or upload from gallery for higher quality!")
+    # Dual input system for better mobile compatibility
+    st.markdown("#### 📷 Choose Your Photo Method:")
     
-    uploaded_file = st.file_uploader(
-        "Take a photo or upload from gallery",
-        type=['png', 'jpg', 'jpeg', 'webp', 'heic'],
-        help="Click to take a photo with your camera or upload from gallery. Use a bright green background for best results!",
-        key="photo_upload"
-    )
+    # Create tabs for different input methods
+    tab1, tab2 = st.tabs(["📱 Camera Input", "📁 File Upload"])
     
-    # Process the uploaded/taken photo
     current_image = None
     image_source = None
     
-    if uploaded_file is not None:
-        try:
-            raw_image = Image.open(uploaded_file)
-            current_image = process_image_for_high_quality(raw_image)
-            if current_image:
-                resolution = f"{current_image.width}x{current_image.height}"
-                image_source = "Camera/Gallery"
-                st.success(f"✅ Photo loaded! Resolution: {resolution} pixels")
-                st.info("💡 Great! This resolution will work perfectly for creating amazing party photos!")
-            else:
-                st.error("❌ Failed to process photo")
-        except Exception as e:
-            st.error(f"❌ Error processing photo: {str(e)}")
-            st.info("💡 Try taking/uploading the photo again with a bright green background")
+    with tab1:
+        st.markdown("**📱 Take Photo with Camera**")
+        st.info("💡 Direct camera access - works best on mobile devices!")
+        
+        camera_photo = st.camera_input(
+            "Take a photo with greenscreen background",
+            help="Use your camera to take a photo with a bright green background for best results",
+            key="camera_input"
+        )
+        
+        if camera_photo is not None:
+            try:
+                raw_image = Image.open(camera_photo)
+                current_image = process_image_for_high_quality(raw_image)
+                if current_image:
+                    resolution = f"{current_image.width}x{current_image.height}"
+                    image_source = "Camera Input"
+                    st.success(f"✅ Photo captured! Resolution: {resolution} pixels")
+                    st.info("💡 Great! This resolution will work perfectly for creating amazing party photos!")
+                else:
+                    st.error("❌ Failed to process camera photo")
+            except Exception as e:
+                st.error(f"❌ Error processing camera photo: {str(e)}")
+                st.info("💡 Try taking the photo again with a bright green background")
+    
+    with tab2:
+        st.markdown("**📁 Upload from Gallery or Take Photo**")
+        st.info("🎯 Upload existing photos or use camera through file picker!")
+        
+        uploaded_file = st.file_uploader(
+            "Upload from gallery or take photo",
+            type=['png', 'jpg', 'jpeg', 'webp', 'heic'],
+            help="Upload a photo from your gallery or take a new photo. Use a bright green background for best results!",
+            key="photo_upload"
+        )
+        
+        if uploaded_file is not None:
+            try:
+                raw_image = Image.open(uploaded_file)
+                current_image = process_image_for_high_quality(raw_image)
+                if current_image:
+                    resolution = f"{current_image.width}x{current_image.height}"
+                    image_source = "File Upload"
+                    st.success(f"✅ Photo loaded! Resolution: {resolution} pixels")
+                    st.info("💡 Great! This resolution will work perfectly for creating amazing party photos!")
+                else:
+                    st.error("❌ Failed to process uploaded photo")
+            except Exception as e:
+                st.error(f"❌ Error processing uploaded photo: {str(e)}")
+                st.info("💡 Try uploading a different photo or use the Camera Input tab")
     
     # Display the image if successfully loaded
     if current_image is not None:
@@ -350,13 +396,13 @@ def main():
         st.markdown("---")
         st.markdown("#### 📷 Photo Tips:")
         st.markdown("""
-        - **📱 Camera Option**: Click the upload area to take a photo directly with your camera
-        - **📁 Gallery Option**: Upload a high-resolution photo from your gallery for best quality
+        - **📱 Camera Input Tab**: Direct camera access - best for taking new photos
+        - **📁 File Upload Tab**: Upload from gallery or use camera through file picker
         - **💡 Best Results**: Use a bright, solid green background (like a green sheet or wall)
         - **📐 Lighting**: Ensure good lighting for clear, high-quality photos
         - **🎯 Focus**: Make sure the subject is in focus and well-lit
         - **📱 Position**: Hold your phone steady and ensure the green background fills the frame
-        - **🔧 Troubleshooting**: If upload fails, try taking a new photo or use a different format
+        - **🔧 Troubleshooting**: If one method doesn't work, try the other tab!
         """)
 
     st.markdown('</div>', unsafe_allow_html=True)
