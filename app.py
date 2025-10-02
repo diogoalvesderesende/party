@@ -200,7 +200,7 @@ def generate_single_photo(uploaded_image, prompt_name, prompt_description):
             if part.text is not None:
                 st.info(f"💭 {prompt_name}: {part.text}")
             elif part.inline_data is not None:
-                # Save the generated image with high quality
+                # Generate the image for session use only
                 safe_name = prompt_name.replace(" ", "_").replace("📂", "").strip()
                 file_name = f"party_photo_{safe_name}.jpg"
                 image = Image.open(io.BytesIO(part.inline_data.data))
@@ -210,10 +210,10 @@ def generate_single_photo(uploaded_image, prompt_name, prompt_description):
                 if image is None:
                     continue
                 
-                # Save as maximum quality JPEG (quality=100)
-                image.save(file_name, 'JPEG', quality=100, optimize=False)
+                # Show success message
+                st.success(f"✅ Generated: {prompt_name}")
                 
-                # Add to display list
+                # Add to display list (kept in session memory only)
                 generated_images.append((image, file_name, prompt_name))
         
         return generated_images
@@ -483,6 +483,7 @@ def main():
         
         # Download options
         st.markdown("**📥 Download Your Photos:**")
+        st.info("💾 **Note**: Photos are kept in session memory only. Download them now to save them permanently!")
         
         # Create zip file with all photos
         if st.button("📦 Download All Photos as ZIP", type="primary", key="download_all"):
