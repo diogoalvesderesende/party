@@ -300,37 +300,12 @@ def main():
     st.markdown("#### 📷 Choose Your Photo Method:")
     
     # Create tabs for different input methods
-    tab1, tab2 = st.tabs(["📱 Camera Input", "📁 File Upload"])
+    tab1, tab2 = st.tabs(["📁 File Upload", "📱 Camera Input"])
     
     current_image = None
     image_source = None
     
     with tab1:
-        st.markdown("**📱 Take Photo with Camera**")
-        st.info("💡 Direct camera access - works best on mobile devices!")
-        
-        camera_photo = st.camera_input(
-            "Take a photo with greenscreen background",
-            help="Use your camera to take a photo with a bright green background for best results",
-            key="camera_input"
-        )
-        
-        if camera_photo is not None:
-            try:
-                raw_image = Image.open(camera_photo)
-                current_image = process_image_for_high_quality(raw_image)
-                if current_image:
-                    resolution = f"{current_image.width}x{current_image.height}"
-                    image_source = "Camera Input"
-                    st.success(f"✅ Photo captured! Resolution: {resolution} pixels")
-                    st.info("💡 Great! This resolution will work perfectly for creating amazing party photos!")
-                else:
-                    st.error("❌ Failed to process camera photo")
-            except Exception as e:
-                st.error(f"❌ Error processing camera photo: {str(e)}")
-                st.info("💡 Try taking the photo again with a bright green background")
-    
-    with tab2:
         st.markdown("**📁 Upload from Gallery or Take Photo**")
         st.info("🎯 Upload existing photos or use camera through file picker!")
         
@@ -356,6 +331,31 @@ def main():
                 st.error(f"❌ Error processing uploaded photo: {str(e)}")
                 st.info("💡 Try uploading a different photo or use the Camera Input tab")
     
+    with tab2:
+        st.markdown("**📱 Take Photo with Camera**")
+        st.info("💡 Direct camera access - works best on mobile devices!")
+        
+        camera_photo = st.camera_input(
+            "Take a photo with greenscreen background",
+            help="Use your camera to take a photo with a bright green background for best results",
+            key="camera_input"
+        )
+        
+        if camera_photo is not None:
+            try:
+                raw_image = Image.open(camera_photo)
+                current_image = process_image_for_high_quality(raw_image)
+                if current_image:
+                    resolution = f"{current_image.width}x{current_image.height}"
+                    image_source = "Camera Input"
+                    st.success(f"✅ Photo captured! Resolution: {resolution} pixels")
+                    st.info("💡 Great! This resolution will work perfectly for creating amazing party photos!")
+                else:
+                    st.error("❌ Failed to process camera photo")
+            except Exception as e:
+                st.error(f"❌ Error processing camera photo: {str(e)}")
+                st.info("💡 Try taking the photo again with a bright green background")
+    
     # Display the image if successfully loaded
     if current_image is not None:
         try:
@@ -367,8 +367,7 @@ def main():
             st.image(
                 current_image, 
                 caption=f"🎭 Your Original Greenscreen Photo ({image_source})", 
-                width=display_width,
-                use_column_width=True
+                width=display_width
             )
             
             # Store in session state
@@ -506,8 +505,7 @@ def main():
                     data=byte_im,
                     file_name=filename,
                     mime="image/jpeg",
-                    key=f"gallery_download_{i}",
-                    use_container_width=True
+                    key=f"gallery_download_{i}"
                 )
                 
                 # Add some space between photos
@@ -549,8 +547,7 @@ def main():
                     data=zip_buffer.getvalue(),
                     file_name="nano_banana_party_photos.zip",
                     mime="application/zip",
-                    key="zip_download",
-                    use_container_width=True
+                    key="zip_download"
                 )
                 
                 st.success(f"🎉 ZIP file created with {total_images} high-quality photos!")
