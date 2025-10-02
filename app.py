@@ -269,7 +269,7 @@ def generate_party_photos(uploaded_image, selected_prompts, custom_prompts):
 def main():
     # Header
     st.markdown('<h1 class="main-header">🍌 Nano Banana Party Photo Editor</h1>', unsafe_allow_html=True)
-    st.markdown('<div style="text-align: center; font-size: 18px; color: #666; margin-bottom: 2rem;">✨ Take photos with greenscreen and transform them into magical birthday party memories! ✨</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; font-size: 18px; color: #666; margin-bottom: 2rem;">📱 Take photos or upload from gallery with greenscreen background to create magical party memories! ✨</div>', unsafe_allow_html=True)
     
     # Initialize session state
     if 'generated_images' not in st.session_state:
@@ -280,28 +280,35 @@ def main():
     # Single column mobile-first layout
     st.markdown('### 📸 Step 1: Take Your Photo')
     
-    # Camera-only photo input
-    st.markdown("#### 📷 Take Your Greenscreen Photo")
-    camera_photo = st.camera_input(
-        "Take a photo with greenscreen background",
-        help="Use your camera to take a photo with a bright green background for best results",
-        key="camera_input"
+    # File uploader that allows camera access for higher quality photos
+    st.markdown("#### 📷 Take or Upload Your Greenscreen Photo")
+    st.info("💡 **Tip**: You can take a photo with your camera or upload from gallery for higher quality!")
+    
+    uploaded_file = st.file_uploader(
+        "Take a photo or upload from gallery",
+        type=['png', 'jpg', 'jpeg', 'webp', 'heic'],
+        help="Click to take a photo with your camera or upload from gallery. Use a bright green background for best results!",
+        key="photo_upload"
     )
     
-    # Process the taken photo
+    # Process the uploaded/taken photo
     current_image = None
+    image_source = None
     
-    if camera_photo is not None:
+    if uploaded_file is not None:
         try:
-            raw_image = Image.open(camera_photo)
+            raw_image = Image.open(uploaded_file)
             current_image = process_image_for_high_quality(raw_image)
             if current_image:
-                st.success("✅ Photo captured from camera!")
+                resolution = f"{current_image.width}x{current_image.height}"
+                image_source = "Camera/Gallery"
+                st.success(f"✅ Photo loaded! Resolution: {resolution} pixels")
+                st.info("💡 Great! This resolution will work perfectly for creating amazing party photos!")
             else:
-                st.error("❌ Failed to process camera photo")
+                st.error("❌ Failed to process photo")
         except Exception as e:
-            st.error(f"❌ Error processing camera photo: {str(e)}")
-            st.info("💡 Try taking the photo again with a bright green background")
+            st.error(f"❌ Error processing photo: {str(e)}")
+            st.info("💡 Try taking/uploading the photo again with a bright green background")
     
     # Display the image if successfully loaded
     if current_image is not None:
@@ -313,7 +320,7 @@ def main():
             
             st.image(
                 current_image, 
-                caption="🎭 Your Original Greenscreen Photo", 
+                caption=f"🎭 Your Original Greenscreen Photo ({image_source})", 
                 width=display_width,
                 use_column_width=True
             )
@@ -321,24 +328,35 @@ def main():
             # Store in session state
             st.session_state.current_image = current_image
             
-            # Show image info
-            st.info(f"📊 Image info: {current_image.width}x{current_image.height} pixels, Mode: {current_image.mode}")
+            # Show detailed image info with quality assessment
+            total_pixels = current_image.width * current_image.height
+            st.info(f"📊 **Photo Details:** {current_image.width}x{current_image.height} pixels ({total_pixels:,} total pixels), {current_image.mode} mode")
+            
+            # Quality assessment
+            if total_pixels >= 500000:  # 500k pixels or more
+                st.success("🎯 **Excellent Quality!** This high-resolution photo will create amazing party photos!")
+            elif total_pixels >= 100000:  # 100k pixels or more
+                st.success("🎯 **Great Quality!** This resolution will work perfectly for creating amazing party photos!")
+            else:
+                st.warning("⚠️ **Lower Resolution** - but still good enough for fun party photos!")
             
         except Exception as e:
             st.error(f"❌ Error displaying image: {str(e)}")
             st.info("💡 The image might be corrupted or in an unsupported format")
     else:
-        st.info("👆 Please take a photo to continue")
+        st.info("👆 Please take a photo or upload an image to continue")
         
-        # Camera tips section
+        # Photo tips section
         st.markdown("---")
-        st.markdown("#### 📷 Camera Tips:")
+        st.markdown("#### 📷 Photo Tips:")
         st.markdown("""
+        - **📱 Camera Option**: Click the upload area to take a photo directly with your camera
+        - **📁 Gallery Option**: Upload a high-resolution photo from your gallery for best quality
         - **💡 Best Results**: Use a bright, solid green background (like a green sheet or wall)
         - **📐 Lighting**: Ensure good lighting for clear, high-quality photos
         - **🎯 Focus**: Make sure the subject is in focus and well-lit
         - **📱 Position**: Hold your phone steady and ensure the green background fills the frame
-        - **🔧 Troubleshooting**: If the photo doesn't load, try taking it again with better lighting
+        - **🔧 Troubleshooting**: If upload fails, try taking a new photo or use a different format
         """)
 
     st.markdown('</div>', unsafe_allow_html=True)
