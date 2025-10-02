@@ -391,19 +391,6 @@ def main():
             st.info("💡 The image might be corrupted or in an unsupported format")
     else:
         st.info("👆 Please take a photo or upload an image to continue")
-        
-        # Photo tips section
-        st.markdown("---")
-        st.markdown("#### 📷 Photo Tips:")
-        st.markdown("""
-        - **📱 Camera Input Tab**: Direct camera access - best for taking new photos
-        - **📁 File Upload Tab**: Upload from gallery or use camera through file picker
-        - **💡 Best Results**: Use a bright, solid green background (like a green sheet or wall)
-        - **📐 Lighting**: Ensure good lighting for clear, high-quality photos
-        - **🎯 Focus**: Make sure the subject is in focus and well-lit
-        - **📱 Position**: Hold your phone steady and ensure the green background fills the frame
-        - **🔧 Troubleshooting**: If one method doesn't work, try the other tab!
-        """)
 
     st.markdown('</div>', unsafe_allow_html=True)
     
