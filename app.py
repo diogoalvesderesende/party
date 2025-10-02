@@ -3,6 +3,7 @@ import os
 import io
 import tempfile
 import base64
+import zipfile
 from PIL import Image
 from google import genai
 from google.genai import types
@@ -94,14 +95,7 @@ st.markdown("""
         .stCameraInput > div {
             border-radius: 10px;
             overflow: hidden;
-        }
-        
-        /* File uploader mobile styling */
-        .stFileUploader > div {
-            border-radius: 10px;
-            border: 2px dashed #FF6B6B;
-            padding: 1rem;
-            background-color: #f8f9fa;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         
         /* Button improvements for mobile */
@@ -147,8 +141,8 @@ PREDEFINED_PROMPTS = {
     "shroomy": "🍄 Shroomy - Make the people appear in a colorful shroomy world. Change the outfits to alice in wonderland mode.",
 }
 
-def process_image_for_mobile(image):
-    """Process image for optimal mobile display and API compatibility"""
+def process_image_for_high_quality(image):
+    """Process image for maximum quality and API compatibility"""
     try:
         # Convert to RGB if necessary (important for JPEG output)
         if image.mode in ('RGBA', 'LA', 'P'):
@@ -161,8 +155,8 @@ def process_image_for_mobile(image):
         elif image.mode != 'RGB':
             image = image.convert('RGB')
         
-        # Resize if too large (max 2048px on longest side for API efficiency)
-        max_size = 2048
+        # Keep original size for maximum quality, only resize if extremely large
+        max_size = 4096  # Increased for higher quality
         if max(image.size) > max_size:
             ratio = max_size / max(image.size)
             new_size = (int(image.width * ratio), int(image.height * ratio))
@@ -211,13 +205,13 @@ def generate_single_photo(uploaded_image, prompt_name, prompt_description):
                 file_name = f"party_photo_{safe_name}.jpg"
                 image = Image.open(io.BytesIO(part.inline_data.data))
                 
-                # Process image for mobile compatibility
-                image = process_image_for_mobile(image)
+                # Process image for high quality
+                image = process_image_for_high_quality(image)
                 if image is None:
                     continue
                 
-                # Save as high-quality JPEG (quality=95)
-                image.save(file_name, 'JPEG', quality=95, optimize=True)
+                # Save as maximum quality JPEG (quality=100)
+                image.save(file_name, 'JPEG', quality=100, optimize=False)
                 
                 # Add to display list
                 generated_images.append((image, file_name, prompt_name))
@@ -286,55 +280,28 @@ def main():
     # Single column mobile-first layout
     st.markdown('### 📸 Step 1: Take Your Photo')
     
-    # Mobile-friendly photo input options
-    col1, col2 = st.columns([1, 1])
+    # Camera-only photo input
+    st.markdown("#### 📷 Take Your Greenscreen Photo")
+    camera_photo = st.camera_input(
+        "Take a photo with greenscreen background",
+        help="Use your camera to take a photo with a bright green background for best results",
+        key="camera_input"
+    )
     
-    with col1:
-        st.markdown("#### 📷 Take Photo")
-        camera_photo = st.camera_input(
-            "Take a photo with greenscreen background",
-            help="Use your camera to take a photo with a green background",
-            key="camera_input"
-        )
-    
-    with col2:
-        st.markdown("#### 📁 Upload Photo")
-        uploaded_file = st.file_uploader(
-            "Or upload from gallery",
-            type=['png', 'jpg', 'jpeg', 'webp', 'heic'],
-            help="Upload a photo with greenscreen background",
-            key="photo_upload"
-        )
-    
-    # Process the uploaded/taken photo
+    # Process the taken photo
     current_image = None
-    image_source = None
     
     if camera_photo is not None:
         try:
             raw_image = Image.open(camera_photo)
-            current_image = process_image_for_mobile(raw_image)
+            current_image = process_image_for_high_quality(raw_image)
             if current_image:
-                image_source = "Camera"
                 st.success("✅ Photo captured from camera!")
             else:
                 st.error("❌ Failed to process camera photo")
         except Exception as e:
             st.error(f"❌ Error processing camera photo: {str(e)}")
-            st.info("💡 Try taking the photo again or use the upload option")
-    
-    elif uploaded_file is not None:
-        try:
-            raw_image = Image.open(uploaded_file)
-            current_image = process_image_for_mobile(raw_image)
-            if current_image:
-                image_source = "Upload"
-                st.success("✅ Photo uploaded successfully!")
-            else:
-                st.error("❌ Failed to process uploaded photo")
-        except Exception as e:
-            st.error(f"❌ Error processing uploaded photo: {str(e)}")
-            st.info("💡 Please try uploading a different photo (PNG, JPG, JPEG, WebP, or HEIC)")
+            st.info("💡 Try taking the photo again with a bright green background")
     
     # Display the image if successfully loaded
     if current_image is not None:
@@ -346,14 +313,13 @@ def main():
             
             st.image(
                 current_image, 
-                caption=f"🎭 Your Original Photo ({image_source})", 
+                caption="🎭 Your Original Greenscreen Photo", 
                 width=display_width,
                 use_column_width=True
             )
             
             # Store in session state
             st.session_state.current_image = current_image
-            st.session_state.image_source = image_source
             
             # Show image info
             st.info(f"📊 Image info: {current_image.width}x{current_image.height} pixels, Mode: {current_image.mode}")
@@ -362,17 +328,17 @@ def main():
             st.error(f"❌ Error displaying image: {str(e)}")
             st.info("💡 The image might be corrupted or in an unsupported format")
     else:
-        st.info("👆 Please take a photo or upload an image to continue")
+        st.info("👆 Please take a photo to continue")
         
-        # Mobile tips section
+        # Camera tips section
         st.markdown("---")
-        st.markdown("#### 📱 Mobile Tips:")
+        st.markdown("#### 📷 Camera Tips:")
         st.markdown("""
-        - **📷 Camera**: Use the camera option for best results with greenscreen
-        - **📁 Upload**: Select from your photo gallery if you already have a greenscreen photo
         - **💡 Best Results**: Use a bright, solid green background (like a green sheet or wall)
-        - **📐 Format**: The app supports PNG, JPG, JPEG, WebP, and HEIC formats
-        - **🔧 Troubleshooting**: If upload fails, try taking a new photo or use a different format
+        - **📐 Lighting**: Ensure good lighting for clear, high-quality photos
+        - **🎯 Focus**: Make sure the subject is in focus and well-lit
+        - **📱 Position**: Hold your phone steady and ensure the green background fills the frame
+        - **🔧 Troubleshooting**: If the photo doesn't load, try taking it again with better lighting
         """)
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -479,9 +445,9 @@ def main():
                 # Download button below each image
                 download_label = f"📥 Download: {prompt_name}" if len(image_data) == 3 else f"📥 Download Photo {i + 1}"
                 
-                # Create download button
+                # Create download button with maximum quality
                 buf = io.BytesIO()
-                image.save(buf, format='JPEG', quality=95)
+                image.save(buf, format='JPEG', quality=100, optimize=False)
                 byte_im = buf.getvalue()
                 
                 st.download_button(
@@ -500,30 +466,46 @@ def main():
         # Download options
         st.markdown("**📥 Download Your Photos:**")
         
-        if st.button("📦 Download All Photos", type="primary", key="download_all"):
-            # Create individual download buttons for all photos
-            st.success("📸 Download individual photos below!")
-            
-            for i, image_data in enumerate(st.session_state.generated_images):
-                if len(image_data) == 3:
-                    image, filename, prompt_name = image_data
-                    download_label = f"📥 {prompt_name}"
-                else:
-                    image, filename = image_data
-                    download_label = f"📥 Photo {i+1}"
+        # Create zip file with all photos
+        if st.button("📦 Download All Photos as ZIP", type="primary", key="download_all"):
+            try:
+                # Create a zip file in memory
+                zip_buffer = io.BytesIO()
                 
-                # Create download button
-                buf = io.BytesIO()
-                image.save(buf, format='JPEG', quality=95)
-                byte_im = buf.getvalue()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    for i, image_data in enumerate(st.session_state.generated_images):
+                        if len(image_data) == 3:
+                            image, filename, prompt_name = image_data
+                        else:
+                            image, filename = image_data
+                            prompt_name = f"Photo_{i+1}"
+                        
+                        # Create high-quality image data
+                        img_buffer = io.BytesIO()
+                        image.save(img_buffer, format='JPEG', quality=100, optimize=False)
+                        img_buffer.seek(0)
+                        
+                        # Add to zip with clean filename
+                        clean_filename = filename.replace(" ", "_").replace(":", "").replace("🎨", "").replace("📥", "")
+                        zip_file.writestr(clean_filename, img_buffer.getvalue())
                 
+                zip_buffer.seek(0)
+                
+                # Create download button for zip file
                 st.download_button(
-                    label=download_label,
-                    data=byte_im,
-                    file_name=filename,
-                    mime="image/jpeg",
-                    key=f"bulk_download_{i}"
+                    label="📦 Download All Photos (ZIP)",
+                    data=zip_buffer.getvalue(),
+                    file_name="nano_banana_party_photos.zip",
+                    mime="application/zip",
+                    key="zip_download",
+                    use_container_width=True
                 )
+                
+                st.success(f"🎉 ZIP file created with {total_images} high-quality photos!")
+                
+            except Exception as e:
+                st.error(f"❌ Error creating ZIP file: {str(e)}")
+                st.info("💡 Please try downloading individual photos below")
         
         st.markdown('</div>', unsafe_allow_html=True)
     
